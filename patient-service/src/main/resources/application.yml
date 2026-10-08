@@ -1,0 +1,78 @@
+server:
+  port: ${SERVER_PORT:8201}
+  shutdown: graceful
+
+spring:
+  application:
+    name: patient-service
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5434/patients}
+    username: ${DB_USER:medirdv}
+    password: ${DB_PASSWORD:medirdv}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    locations: ${FLYWAY_LOCATIONS:classpath:db/migration}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9292}
+    producer:
+      acks: all
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: patient-service
+      auto-offset-reset: earliest
+    listener:
+      observation-enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # External issuer (what the browser sees) is validated in the "iss" claim,
+          # keys are fetched through the internal network.
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8280/realms/medirdv}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8280/realms/medirdv/protocol/openid-connect/certs}
+
+logging:
+  level:
+    org.apache.kafka: WARN
+
+medirdv:
+  kafka:
+    partitions: ${MEDIRDV_KAFKA_PARTITIONS:3}
+    replicas: ${MEDIRDV_KAFKA_REPLICAS:1}
+  outbox:
+    poll-interval-ms: 500
+    batch-size: 50
+
+management:
+  server:
+    # Actuator on a separate port, not published outside the compose network / cluster.
+    port: ${MANAGEMENT_PORT:9201}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
+      export:
+        enabled: ${TRACING_EXPORT_ENABLED:false}

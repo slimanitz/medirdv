@@ -1,0 +1,26 @@
+<header class="topbar">
+  <a class="brand" routerLink="/">
+    <span class="brand-mark" aria-hidden="true">+</span>
+    MediRDV
+  </a>
+  <nav aria-label="Navigation principale">
+    @if (session.hasRole('patient')) {
+      <a routerLink="/book" routerLinkActive="active">Prendre rendez-vous</a>
+      <a routerLink="/notifications" routerLinkActive="active">Notifications</a>
+    }
+    @if (session.isStaff) {
+      <a routerLink="/agenda" routerLinkActive="active">Agenda</a>
+      <a routerLink="/patients" routerLinkActive="active">Patients</a>
+    }
+  </nav>
+  <div class="user">
+    <span>{{ session.displayName }}</span>
+    <button type="button" class="ghost" (click)="session.logout()">Se déconnecter</button>
+  </div>
+</header>
+
+<main>
+  <router-outlet />
+</main>
+
+<footer>MediRDV · démonstration, données fictives · aucune donnée personnelle dans les événements</footer>

@@ -1,0 +1,167 @@
+{{- /* One ConfigMap + Deployment + Service + HPA per Java service. */ -}}
+{{- $root := . -}}
+{{- range $name, $svc := .Values.services }}
+{{- if $svc.enabled }}
+{{- $full := printf "medirdv-%s" $name }}
+{{- $defaults := $root.Values.serviceDefaults }}
+{{- $autoscaling := merge (default dict $svc.autoscaling) $defaults.autoscaling }}
+{{- $managementPort := default (add $svc.port 1000) $svc.managementPort }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $full }}
+  labels:
+    {{- include "medirdv.labels" $root | nindent 4 }}
+    app.kubernetes.io/name: {{ $full }}
+data:
+  SERVER_PORT: {{ $svc.port | quote }}
+  MANAGEMENT_PORT: {{ $managementPort | quote }}
+  JWT_ISSUER_URI: {{ $root.Values.external.keycloak.issuerUri | quote }}
+  JWT_JWK_SET_URI: {{ $root.Values.external.keycloak.jwkSetUri | quote }}
+  LOGGING_STRUCTURED_FORMAT_CONSOLE: ecs
+  TRACING_EXPORT_ENABLED: {{ $root.Values.tracing.exportEnabled | quote }}
+  OTLP_TRACING_ENDPOINT: {{ $root.Values.tracing.otlpEndpoint | quote }}
+  JAVA_TOOL_OPTIONS: {{ $defaults.javaToolOptions | quote }}
+  {{- if ne $name "gateway" }}
+  KAFKA_BOOTSTRAP_SERVERS: {{ $root.Values.external.kafkaBootstrapServers | quote }}
+  MEDIRDV_KAFKA_REPLICAS: {{ $root.Values.external.kafkaReplicationFactor | default 1 | quote }}
+  {{- end }}
+  {{- with $svc.database }}
+  DB_URL: {{ .url | quote }}
+  # Schema migrations only; demo data needs the "demo" profile (values: demoData).
+  FLYWAY_LOCATIONS: classpath:db/migration
+  {{- if $root.Values.demoData }}
+  SPRING_PROFILES_ACTIVE: demo
+  {{- end }}
+  {{- end }}
+  {{- range $key, $value := $svc.env }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $full }}
+  labels:
+    {{- include "medirdv.labels" $root | nindent 4 }}
+    app.kubernetes.io/name: {{ $full }}
+spec:
+  {{- if not $autoscaling.enabled }}
+  replicas: {{ default $defaults.replicas $svc.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $full }}
+      app.kubernetes.io/instance: {{ $root.Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $full }}
+        app.kubernetes.io/instance: {{ $root.Release.Name }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: {{ $managementPort | quote }}
+        checksum/config: {{ toJson $svc | sha256sum | trunc 16 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        # Matches "USER 10001:10001" of the Dockerfile.
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      containers:
+        - name: {{ $name }}
+          image: {{ include "medirdv.image" (dict "root" $root "name" $name) }}
+          imagePullPolicy: {{ $root.Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $svc.port }}
+            - name: management
+              containerPort: {{ $managementPort }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          envFrom:
+            - configMapRef:
+                name: {{ $full }}
+          {{- if $svc.database }}
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $root.Values.external.database.existingSecret }}
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $root.Values.external.database.existingSecret }}
+                  key: password
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: management
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          resources:
+            {{- toYaml (default $defaults.resources $svc.resources) | nindent 12 }}
+          securityContext:
+            {{- include "medirdv.containerSecurityContext" $root | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $full }}
+  labels:
+    {{- include "medirdv.labels" $root | nindent 4 }}
+    app.kubernetes.io/name: {{ $full }}
+spec:
+  selector:
+    app.kubernetes.io/name: {{ $full }}
+    app.kubernetes.io/instance: {{ $root.Release.Name }}
+  ports:
+    - name: http
+      port: {{ $svc.port }}
+      targetPort: http
+    - name: management
+      port: {{ $managementPort }}
+      targetPort: management
+{{- if $autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $full }}
+  labels:
+    {{- include "medirdv.labels" $root | nindent 4 }}
+    app.kubernetes.io/name: {{ $full }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $full }}
+  minReplicas: {{ $autoscaling.minReplicas }}
+  maxReplicas: {{ $autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}
+{{- end }}
+{{- end }}

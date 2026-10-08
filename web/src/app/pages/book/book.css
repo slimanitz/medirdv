@@ -1,0 +1,169 @@
+.practitioners {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.practitioner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: left;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.9rem;
+  font-weight: 400;
+}
+
+.practitioner:hover:not(:disabled),
+.practitioner.selected {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.practitioner small {
+  display: block;
+  color: var(--text-muted);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.week-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.week-nav h2 {
+  margin: 0;
+}
+
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+
+.slots-grid.loading {
+  opacity: 0.5;
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.day h3 {
+  font-size: 0.85rem;
+  text-transform: capitalize;
+  margin: 0 0 0.25rem;
+  text-align: center;
+}
+
+.slot {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  border-color: transparent;
+  padding: 0.35rem;
+}
+
+.slot.chosen {
+  background: var(--primary);
+  color: #fff;
+}
+
+.none {
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.confirm {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.confirm p {
+  margin: 0;
+}
+
+.status-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  border-left: 5px solid var(--warning);
+}
+
+.status-card.CONFIRMED {
+  border-left-color: var(--success);
+}
+
+.status-card.REJECTED {
+  border-left-color: var(--danger);
+}
+
+.status-card p {
+  margin: 0.25rem 0;
+}
+
+.hint {
+  color: var(--text-muted);
+}
+
+.badge.big {
+  font-size: 1rem;
+  padding: 0.4rem 1rem;
+}
+
+.spinner {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid var(--warning);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mine {
+  margin-top: 1.25rem;
+}
+
+.actions {
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .slots-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .confirm {
+    grid-template-columns: 1fr;
+  }
+}

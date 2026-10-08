@@ -1,0 +1,24 @@
+<h1>Mes notifications</h1>
+<p class="subtitle">Les messages envoyés par e-mail concernant vos rendez-vous.</p>
+
+@if (error()) {
+  <div class="alert error" role="alert">{{ error() }}</div>
+}
+
+@if (notifications(); as list) {
+  <ul class="list">
+    @for (n of list; track n.id) {
+      <li class="card notification {{ n.type }}">
+        <div class="meta">
+          <strong>{{ titles[n.type] }}</strong>
+          <span>{{ n.createdAt | parisDate }} · {{ n.channel === 'EMAIL' ? 'E-mail' : n.channel }}</span>
+        </div>
+        <p>{{ n.body }}</p>
+      </li>
+    } @empty {
+      <li class="empty">Aucune notification pour le moment.</li>
+    }
+  </ul>
+} @else {
+  <p class="empty">Chargement…</p>
+}

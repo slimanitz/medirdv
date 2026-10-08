@@ -1,0 +1,10 @@
+**/target
+**/node_modules
+web
+deploy
+docs
+scripts
+.github
+.git
+*.md
+.env

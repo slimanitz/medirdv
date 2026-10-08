@@ -1,0 +1,71 @@
+server:
+  port: ${SERVER_PORT:8200}
+  shutdown: graceful
+
+spring:
+  application:
+    name: gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8280/realms/medirdv}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8280/realms/medirdv/protocol/openid-connect/certs}
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: patient-service
+              uri: ${PATIENT_SERVICE_URL:http://localhost:8201}
+              predicates:
+                - Path=/api/patients,/api/patients/**
+              filters:
+                - StripPrefix=1
+            - id: scheduling-service
+              uri: ${SCHEDULING_SERVICE_URL:http://localhost:8202}
+              predicates:
+                - Path=/api/practitioners,/api/practitioners/**,/api/appointments,/api/appointments/**
+              filters:
+                - StripPrefix=1
+            - id: notification-service
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8203}
+              predicates:
+                - Path=/api/notifications,/api/notifications/**
+              filters:
+                - StripPrefix=1
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Vary, RETAIN_UNIQUE
+
+medirdv:
+  cors:
+    # Origins of the Angular app (dev server and nginx). In docker compose the app is served
+    # from the same origin through nginx, so CORS only matters for local development.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4202,http://localhost:8204}
+
+management:
+  server:
+    # Actuator on a separate port, not published outside the compose network / cluster.
+    port: ${MANAGEMENT_PORT:9200}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,gateway
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
+      export:
+        enabled: ${TRACING_EXPORT_ENABLED:false}

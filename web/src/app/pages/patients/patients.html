@@ -1,0 +1,50 @@
+<h1>Patients</h1>
+<p class="subtitle">Dossiers administratifs. Ces données ne quittent jamais le service patients.</p>
+
+@if (error()) {
+  <div class="alert error" role="alert">{{ error() }}</div>
+}
+@if (success()) {
+  <div class="alert success" role="status">{{ success() }}</div>
+}
+
+<div class="layout">
+  <section class="card">
+    <h2>{{ patients().length }} patient(s)</h2>
+    <table>
+      <thead>
+        <tr><th>Nom</th><th>Naissance</th><th>Contact</th><th>Statut</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (p of patients(); track p.id) {
+          <tr>
+            <td><strong>{{ p.lastName }}</strong> {{ p.firstName }}</td>
+            <td>{{ p.birthDate | parisDate: 'short' }} {{ p.birthDate.slice(0, 4) }}</td>
+            <td class="contact">{{ p.email }}<br />{{ p.phone ?? '' }}</td>
+            <td><span class="badge {{ p.status }}">{{ p.status === 'ACTIVE' ? 'ACTIF' : 'INACTIF' }}</span></td>
+            <td>
+              @if (p.status === 'ACTIVE') {
+                <button type="button" class="danger" (click)="deactivate(p)">Désactiver</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Nouveau patient</h2>
+    <form [formGroup]="form" (ngSubmit)="create()" class="form">
+      <label>Prénom <input formControlName="firstName" autocomplete="off" /></label>
+      <label>Nom <input formControlName="lastName" autocomplete="off" /></label>
+      <label>E-mail <input formControlName="email" type="email" autocomplete="off" /></label>
+      <label>Téléphone <input formControlName="phone" placeholder="06 12 34 56 78" /></label>
+      <label>Date de naissance <input formControlName="birthDate" type="date" /></label>
+      @if (form.touched && form.invalid) {
+        <p class="invalid">Vérifiez les champs obligatoires et le format de l'e-mail.</p>
+      }
+      <button type="submit" [disabled]="saving()">Créer le dossier</button>
+    </form>
+  </section>
+</div>

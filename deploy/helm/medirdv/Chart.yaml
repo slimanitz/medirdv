@@ -1,0 +1,10 @@
+apiVersion: v2
+name: medirdv
+description: MediRDV - medical appointment booking (gateway, patient, scheduling, notification services and web app)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords: [healthcare, booking, kafka, saga, spring-boot]
+maintainers:
+  - name: Slimane Berrada
+    url: https://github.com/slimanitz

@@ -1,0 +1,5 @@
+# Profile "demo": loads the demo data set (fictitious practitioners / patients matching the
+# Keycloak demo users). Enabled by docker compose, never by the Helm chart.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/demo

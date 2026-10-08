@@ -1,0 +1,64 @@
+<div class="header">
+  <div>
+    <h1>Agenda</h1>
+    <p class="subtitle">{{ confirmedCount() }} rendez-vous confirmé(s) cette semaine.</p>
+  </div>
+  @if (!ownAgenda) {
+    <label class="practitioner-select">
+      Praticien
+      <select [ngModel]="practitionerId()" (ngModelChange)="changePractitioner($event)">
+        @for (p of practitioners(); track p.id) {
+          <option [value]="p.id">{{ p.fullName }} · {{ p.specialty }}</option>
+        }
+      </select>
+    </label>
+  }
+</div>
+
+@if (error()) {
+  <div class="alert error" role="alert">{{ error() }}</div>
+}
+
+<div class="toolbar">
+  <button type="button" class="ghost" (click)="changeWeek(-1)">←</button>
+  <button type="button" class="ghost" (click)="changeWeek(0)">Aujourd'hui</button>
+  <button type="button" class="ghost" (click)="changeWeek(1)">→</button>
+  <h2>Semaine du {{ days()[0] | parisDate: 'day' }}</h2>
+  <label class="checkbox">
+    <input type="checkbox" [ngModel]="showInactive()" (ngModelChange)="showInactive.set($event)" />
+    Afficher annulés et refusés
+  </label>
+</div>
+
+<div class="week">
+  @for (day of days(); track day) {
+    <section class="day card">
+      <h3>{{ day | parisDate: 'short' }}</h3>
+      @for (a of byDay().get(day); track a.id) {
+        <article class="appointment {{ a.status }}">
+          <div class="time">{{ a.start | parisDate: 'time' }} – {{ a.end | parisDate: 'time' }}</div>
+          <div class="patient">{{ patientName(a.patientId) }}</div>
+          @if (a.reason) {
+            <div class="reason">{{ a.reason }}</div>
+          }
+          <div class="footer">
+            <span class="badge {{ a.status }}">{{ a.status | statusLabel }}</span>
+            @if (a.status === 'CONFIRMED' || a.status === 'PENDING_VALIDATION') {
+              <button type="button" class="danger small" (click)="cancelling.set(a)">Annuler</button>
+            }
+          </div>
+        </article>
+      } @empty {
+        <p class="empty">Aucun rendez-vous</p>
+      }
+    </section>
+  }
+</div>
+
+@if (cancelling(); as a) {
+  <app-cancel-dialog
+    [summary]="patientName(a.patientId) + ' · ' + (a.start | parisDate)"
+    defaultReason="PRACTITIONER_UNAVAILABLE"
+    (confirmed)="cancel(a, $event)"
+    (dismissed)="cancelling.set(null)" />
+}

@@ -1,0 +1,8 @@
+MediRDV {{ .Chart.AppVersion }} deployed in namespace {{ .Release.Namespace }}.
+
+Application: http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.host }}
+API gateway: http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.host }}/api
+
+Prerequisites (not installed by this chart): Kafka at {{ .Values.external.kafkaBootstrapServers }},
+PostgreSQL databases, Keycloak realm "medirdv" ({{ .Values.external.keycloak.issuerUri }})
+and the "{{ .Values.external.database.existingSecret }}" secret.

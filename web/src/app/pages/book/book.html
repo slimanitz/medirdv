@@ -1,0 +1,118 @@
+<h1>Prendre rendez-vous</h1>
+<p class="subtitle">Choisissez un praticien puis un créneau disponible.</p>
+
+@if (error()) {
+  <div class="alert error" role="alert">{{ error() }}</div>
+}
+
+@if (booking(); as b) {
+  <section class="card status-card" [class]="b.status" aria-live="polite">
+    <div>
+      <h2>Votre demande de rendez-vous</h2>
+      <p>
+        {{ practitionerNames().get(b.practitionerId) }} · {{ b.start | parisDate }}
+      </p>
+      @switch (b.status) {
+        @case ('PENDING_VALIDATION') {
+          <p class="hint"><span class="spinner" aria-hidden="true"></span> Vérification de votre dossier en cours…</p>
+        }
+        @case ('CONFIRMED') {
+          <p class="hint">Votre rendez-vous est confirmé. Une notification vous a été envoyée.</p>
+        }
+        @case ('REJECTED') {
+          <p class="hint">La demande n'a pas pu être confirmée ({{ b.statusReason }}). Le créneau a été libéré.</p>
+        }
+      }
+    </div>
+    <span class="badge big {{ b.status }}" data-testid="booking-status">{{ b.status | statusLabel }}</span>
+  </section>
+}
+
+<section class="practitioners">
+  @for (p of practitioners(); track p.id) {
+    <button type="button" class="practitioner" [class.selected]="selected()?.id === p.id" (click)="select(p)">
+      <span class="avatar" aria-hidden="true">{{ p.fullName.split(' ')[1]?.charAt(0) }}</span>
+      <span>
+        <strong>{{ p.fullName }}</strong>
+        <small>{{ p.specialty }}</small>
+      </span>
+    </button>
+  } @empty {
+    <p class="empty">Chargement des praticiens…</p>
+  }
+</section>
+
+@if (selected(); as practitioner) {
+  <section class="card">
+    <div class="week-nav">
+      <button type="button" class="ghost" (click)="changeWeek(-1)" [disabled]="!canGoBack()">← Semaine précédente</button>
+      <h2>Semaine du {{ days()[0] | parisDate: 'day' }}</h2>
+      <button type="button" class="ghost" (click)="changeWeek(1)">Semaine suivante →</button>
+    </div>
+
+    <div class="slots-grid" [class.loading]="loadingSlots()">
+      @for (day of days(); track day) {
+        <div class="day">
+          <h3>{{ day | parisDate: 'short' }}</h3>
+          @for (slot of slotsByDay().get(day); track slot.start) {
+            <button type="button" class="slot" [class.chosen]="chosenSlot()?.start === slot.start"
+                    (click)="chosenSlot.set(slot)">
+              {{ slot.start | parisDate: 'time' }}
+            </button>
+          } @empty {
+            <span class="none">—</span>
+          }
+        </div>
+      }
+    </div>
+
+    @if (chosenSlot(); as slot) {
+      <form class="confirm" (ngSubmit)="book()">
+        <p>
+          <strong>{{ practitioner.fullName }}</strong> · {{ slot.start | parisDate }}
+        </p>
+        <label>
+          Motif de consultation (facultatif)
+          <input name="reason" maxlength="255" [ngModel]="reason()" (ngModelChange)="reason.set($event)"
+                 placeholder="Ex. : renouvellement d'ordonnance" />
+        </label>
+        <button type="submit" [disabled]="submitting()">Confirmer le rendez-vous</button>
+      </form>
+    }
+  </section>
+}
+
+<section class="card mine">
+  <h2>Mes rendez-vous</h2>
+  @if (appointments().length === 0) {
+    <p class="empty">Aucun rendez-vous pour le moment.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Praticien</th><th>Statut</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (a of appointments(); track a.id) {
+          <tr>
+            <td>{{ a.start | parisDate }}</td>
+            <td>{{ practitionerNames().get(a.practitionerId) ?? '—' }}</td>
+            <td><span class="badge {{ a.status }}">{{ a.status | statusLabel }}</span></td>
+            <td class="actions">
+              @if (isActive(a)) {
+                <button type="button" class="danger" (click)="cancelling.set(a)">Annuler</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</section>
+
+@if (cancelling(); as a) {
+  <app-cancel-dialog
+    [summary]="(practitionerNames().get(a.practitionerId) ?? '') + ' · ' + (a.start | parisDate)"
+    defaultReason="PATIENT_REQUEST"
+    (confirmed)="cancel(a, $event)"
+    (dismissed)="cancelling.set(null)" />
+}

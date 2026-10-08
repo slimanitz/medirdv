@@ -1,0 +1,41 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: medirdv
+  labels:
+    {{- include "medirdv.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          # API calls go to the gateway, everything else to the Angular app.
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: medirdv-gateway
+                port:
+                  number: {{ .Values.services.gateway.port }}
+          {{- if .Values.web.enabled }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: medirdv-web
+                port:
+                  number: {{ .Values.web.port }}
+          {{- end }}
+{{- end }}
